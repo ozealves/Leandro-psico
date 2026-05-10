@@ -1,12 +1,28 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 100, // Limit each IP to 100 requests per window
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: "Muitas requisições deste IP, por favor tente novamente mais tarde."
+  });
+
+  app.use(helmet({
+    contentSecurityPolicy: false,
+  }));
+  app.use(cors());
   app.use(express.json());
+  app.use("/api/", limiter);
 
   // API routes FIRST
   app.get("/api/health", (req, res) => {

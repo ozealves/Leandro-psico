@@ -45,9 +45,29 @@ Este projeto é uma plataforma de gestão para consultórios de psicologia, foca
 - Teste unitário de exemplo para o componente `Button`.
 - Scripts de validação incluídos no `package.json`: `npm run test` e `npm run lint`.
 
-## 📁 Estrutura de Pastas Principal
-- `/src/pages`: Páginas da aplicação.
-- `/src/store`: Gerenciamento de estado (Zustand).
-- `/src/lib`: Utilidades (ex: `cn` para Tailwind).
-- `/components/ui`: Componentes de interface compartilhados.
-- `/server.ts`: Servidor backend (Express) integrando a API.
+## 💻 Como rodar localmente (VS Code)
+
+Para exportar o projeto do AI Studio e rodar na sua máquina:
+
+### 1. Exportar do AI Studio Build
+1. Clique no ícone de **Configurações** (engrenagem) no canto superior.
+2. Escolha **"Export to GitHub"** (para criar um repositório) ou **"Download ZIP"** (para baixar os arquivos diretamente).
+
+### 2. Preparar o Ambiente
+Certifique-se de ter o [Node.js](https://nodejs.org/) instalado.
+
+### 3. Instalar Dependências
+No terminal do seu VS Code, dentro da pasta do projeto, execute:
+```bash
+npm install
+```
+
+### 4. Rodar o Projeto
+Para iniciar o servidor de desenvolvimento (Vite + Express):
+```bash
+npm run dev
+```
+O projeto estará disponível em `http://localhost:3000`.
+
+## 🔒 Variáveis de Ambiente
+Crie um arquivo `.env` na raiz do projeto baseado no `.env.example` e adicione sua `GEMINI_API_KEY` se for utilizar funcionalidades de IA localmente.

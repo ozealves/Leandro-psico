@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import DOMPurify from 'dompurify';
 
 interface Record {
   id: string;
@@ -286,7 +287,7 @@ export default function Records() {
                       </div>
                       <div 
                         className="text-sm text-muted-foreground line-clamp-2 prose-sm"
-                        dangerouslySetInnerHTML={{ __html: record.content }}
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(record.content) }}
                       />
                     </div>
                   ))
@@ -326,7 +327,7 @@ export default function Records() {
                     </div>
                     <div 
                       className="prose dark:prose-invert max-w-none text-card-foreground leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: selectedRecord.content }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedRecord.content) }}
                     />
                     <div className="mt-6 pt-4 border-t border-border flex justify-between items-center">
                       <div className="text-xs text-muted-foreground flex items-center">
