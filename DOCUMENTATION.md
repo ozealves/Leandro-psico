@@ -71,3 +71,16 @@ O projeto estará disponível em `http://localhost:3000`.
 
 ## 🔒 Variáveis de Ambiente
 Crie um arquivo `.env` na raiz do projeto baseado no `.env.example` e adicione sua `GEMINI_API_KEY` se for utilizar funcionalidades de IA localmente.
+
+## ❓ Solução de Problemas
+
+### Erro `ERR_INVALID_URL_SCHEME` no Node.js v18
+Se você encontrar o erro `The URL must be of scheme file` ao rodar `npm run dev`, isso geralmente é causado por uma incompatibilidade entre certas versões do Node.js (especialmente v18.19.x) e o carregador `tsx`.
+
+**Soluções:**
+1. **Atualize o Node.js**: Recomendamos usar a versão LTS mais recente (v20 ou superior).
+2. **Use um comando alternativo**: Tente rodar o servidor usando:
+   ```bash
+   npx tsx server.ts
+   ```
+3. **Verifique permissões**: Garanta que o terminal tem permissão de leitura na pasta do projeto.
