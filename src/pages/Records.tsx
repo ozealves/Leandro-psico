@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, FileText, Lock, Clock, Bold, Italic, List, ListOrdered } from "lucide-react";
+import { Search, FileText, Lock, Clock, Bold, Italic, List, ListOrdered, Download, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -17,6 +17,8 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import DOMPurify from 'dompurify';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface Record {
   id: string;
@@ -88,6 +90,8 @@ export default function Records() {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPatientId, setSelectedPatientId] = useState<string>("all");
+  const [exporting, setExporting] = useState(false);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -167,6 +171,54 @@ export default function Records() {
     const matchesPatient = selectedPatientId === "all" || record.patientId === selectedPatientId;
     return matchesSearch && matchesPatient;
   });
+
+  const exportPDF = async () => {
+    if (!selectedRecord || !pdfRef.current) return;
+    
+    setExporting(true);
+    const toastId = toast.loading("Gerando PDF...");
+    
+    try {
+      const element = pdfRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      pdf.save(`Prontuario_${selectedRecord.patientName.replace(/\s+/g, '_')}_${format(new Date(selectedRecord.date), 'ddMMyyyy')}.pdf`);
+      toast.success("PDF exportado com sucesso!", { id: toastId });
+    } catch (error) {
+      console.error("Erro ao exportar PDF:", error);
+      toast.error("Erro ao gerar PDF. Tente novamente.", { id: toastId });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
@@ -313,30 +365,61 @@ export default function Records() {
                     Acesso restrito • {selectedRecord.psychologist}
                   </p>
                 </div>
-                <Button variant="outline" size="sm">Exportar PDF</Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={exportPDF} 
+                  disabled={exporting}
+                  className="gap-2"
+                >
+                  {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  {exporting ? "Gerando..." : "Exportar PDF"}
+                </Button>
               </CardHeader>
               <CardContent className="p-6 overflow-auto flex-1">
-                <div className="max-w-3xl mx-auto space-y-8">
+                <div className="max-w-3xl mx-auto space-y-8" ref={pdfRef}>
                   {/* Sessão */}
-                  <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
-                    <div className="flex justify-between items-center mb-4 pb-4 border-b border-border">
-                      <h3 className="font-semibold text-lg">Evolução Clínica</h3>
-                      <span className="text-sm text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                        {format(new Date(selectedRecord.date), "dd 'de' MMMM, yyyy 'às' HH:mm", { locale: ptBR })}
-                      </span>
-                    </div>
-                    <div 
-                      className="prose dark:prose-invert max-w-none text-card-foreground leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedRecord.content) }}
-                    />
-                    <div className="mt-6 pt-4 border-t border-border flex justify-between items-center">
-                      <div className="text-xs text-muted-foreground flex items-center">
-                        <Lock className="w-3 h-3 mr-1" />
-                        Assinado digitalmente por {selectedRecord.psychologist}
+                  <div className="bg-card p-8 rounded-xl border border-border shadow-sm">
+                    <div className="flex justify-between items-start mb-6 pb-6 border-b border-border">
+                      <div className="space-y-1">
+                        <h2 className="text-2xl font-bold tracking-tight text-foreground uppercase">Prontuário Psicológico</h2>
+                        <p className="text-sm text-muted-foreground">{selectedRecord.psychologist}</p>
                       </div>
-                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                        Finalizado
-                      </Badge>
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-foreground">Data da Evolução</div>
+                        <div className="text-sm text-muted-foreground">
+                          {format(new Date(selectedRecord.date), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mb-8 p-4 bg-muted/30 rounded-lg border border-border/50">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Paciente</div>
+                        <div className="text-sm font-semibold">{selectedRecord.patientName}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">ID Registro</div>
+                        <div className="text-xs font-mono">{selectedRecord.id}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <h3 className="font-bold text-sm uppercase tracking-widest text-primary/80">Evolução Clínica</h3>
+                      <div 
+                        className="prose dark:prose-invert max-w-none text-card-foreground leading-relaxed text-base"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedRecord.content) }}
+                      />
+                    </div>
+
+                    <div className="mt-12 pt-8 border-t-2 border-dashed border-border flex flex-col items-center">
+                      <div className="w-64 h-px bg-foreground/20 mb-2"></div>
+                      <div className="text-sm font-medium text-foreground">{selectedRecord.psychologist}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase mt-1">Psicólogo(a) Responsável</div>
+                      <div className="flex items-center gap-1 mt-4 px-3 py-1 bg-green-500/10 text-green-600 rounded-full text-[10px] font-bold">
+                        <Lock className="w-3 h-3" />
+                        DOCUMENTO ASSINADO DIGITALMENTE
+                      </div>
                     </div>
                   </div>
                 </div>
