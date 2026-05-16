@@ -38,8 +38,12 @@ export const useStore = create<AppState>()(
       setWhatsappBotEnabled: (whatsappBotEnabled) => set({ whatsappBotEnabled }),
     }),
     {
-      name: 'psiflow-storage', // name of the item in the storage (must be unique)
-      partialize: (state) => ({ theme: state.theme }), // By default, only saving theme to avoid bugs with mocks, expand later if needed
+      name: 'psiflow-storage',
+      partialize: (state) => ({ 
+        theme: state.theme,
+        googleSyncEnabled: state.googleSyncEnabled,
+        whatsappBotEnabled: state.whatsappBotEnabled
+      }),
     }
   )
 );

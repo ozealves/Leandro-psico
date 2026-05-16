@@ -5,11 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useStore } from "@/src/store/useStore";
-import { User, Bell, Shield, Palette, Link2, Calendar as CalendarIcon, MessageCircle, Check, X, Eye, EyeOff } from "lucide-react";
+import { User, Bell, Shield, Palette, Link2, Calendar as CalendarIcon, MessageCircle, Check, X, Eye, EyeOff, Loader2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -45,6 +46,7 @@ export default function Settings() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isActivatingWhatsapp, setIsActivatingWhatsapp] = useState(false);
 
   const {
     register,
@@ -118,14 +120,21 @@ export default function Settings() {
 
   const handleWhatsappBotToggle = (checked: boolean) => {
     if (checked) {
-      toast.info("Iniciando configuração do Bot do WhatsApp...");
+      setIsActivatingWhatsapp(true);
+      const loadingToastId = toast.loading("Conectando ao serviço de WhatsApp...");
+      
       setTimeout(() => {
         setWhatsappBot(true);
-        toast.success("Bot de lembretes automáticos ativado!");
-      }, 1500);
+        setIsActivatingWhatsapp(false);
+        toast.success("Bot de lembretes automáticos ativado!", {
+          id: loadingToastId,
+          description: "Seus pacientes receberão lembretes 24h antes das consultas.",
+          icon: <Sparkles className="w-4 h-4 text-green-500" />
+        });
+      }, 2500);
     } else {
       setWhatsappBot(false);
-      toast.success("Lembretes automáticos desativados.");
+      toast.success("Bot do WhatsApp desativado.");
     }
   };
 
@@ -399,7 +408,20 @@ export default function Settings() {
                   <div>
                     <h4 className="font-medium flex items-center gap-2">
                       Bot do WhatsApp (Lembretes)
-                      {whatsappBot && <Badge variant="default" className="bg-green-600">Ativo</Badge>}
+                      <AnimatePresence>
+                        {whatsappBot && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.5 }}
+                          >
+                            <Badge variant="default" className="bg-green-600 gap-1">
+                              <Check className="w-3 h-3" />
+                              Ativo
+                            </Badge>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </h4>
                     <p className="text-sm text-muted-foreground mt-1">
                       Envie lembretes automáticos para seus pacientes 24 horas antes da consulta. Requer plano Premium.
@@ -408,10 +430,17 @@ export default function Settings() {
                 </div>
                 <div className="shrink-0 flex items-center gap-2">
                   <Label htmlFor="whatsapp-bot-toggle" className="sr-only">Ativar Bot WhatsApp</Label>
+                  {isActivatingWhatsapp && (
+                    <div className="flex items-center gap-1 text-xs text-primary animate-pulse font-medium">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Configurando...
+                    </div>
+                  )}
                   <Switch 
                     id="whatsapp-bot-toggle" 
                     checked={whatsappBot} 
-                    onCheckedChange={handleWhatsappBotToggle} 
+                    onCheckedChange={handleWhatsappBotToggle}
+                    disabled={isActivatingWhatsapp}
                   />
                 </div>
               </div>

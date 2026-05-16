@@ -173,48 +173,86 @@ export default function Records() {
   });
 
   const exportPDF = async () => {
-    if (!selectedRecord || !pdfRef.current) return;
+    if (!selectedRecord || !pdfRef.current) {
+      toast.error("Nenhum prontuário carregado para exportar.");
+      return;
+    }
     
     setExporting(true);
-    const toastId = toast.loading("Gerando PDF...");
+    const toastId = toast.loading("Preparando documento para exportação...");
     
     try {
       const element = pdfRef.current;
+      
+      // Captura o canvas com configurações que evitam re-render do layout principal
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
+        onclone: (clonedDoc) => {
+          // Garante que o documento clonado esteja em modo claro e visível
+          const clonedRoot = clonedDoc.documentElement;
+          clonedRoot.className = 'light';
+          clonedRoot.style.backgroundColor = '#ffffff';
+          
+          const printable = clonedDoc.getElementById('printable-record');
+          if (printable) {
+            printable.style.padding = '40px';
+            printable.style.backgroundColor = '#ffffff';
+            printable.style.color = '#000000';
+            
+            // Força cores pretas em todos os textos para legibilidade no PDF
+            const textElements = printable.querySelectorAll('*');
+            textElements.forEach((el: any) => {
+              if (el.classList.contains('text-muted-foreground')) {
+                el.style.color = '#4b5563';
+              } else if (!el.classList.contains('text-primary') && !el.classList.contains('text-green-600')) {
+                el.style.color = '#000000';
+              }
+            });
+
+            // Remove o efeito "prose" que inverte cores em dark mode
+            const prose = printable.querySelectorAll('.prose');
+            prose.forEach((p: any) => {
+              p.classList.remove('dark:prose-invert');
+              p.style.color = '#000000';
+            });
+          }
+        }
       });
       
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
+        putOnlyUsedFonts: true
       });
       
-      const imgWidth = 210;
+      const imgWidth = 190; // Margem de 10mm de cada lado (210 - 20)
       const pageHeight = 297;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
-      let position = 0;
+      let position = 10; // Margem superior de 10mm
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight + 10;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
       }
       
-      pdf.save(`Prontuario_${selectedRecord.patientName.replace(/\s+/g, '_')}_${format(new Date(selectedRecord.date), 'ddMMyyyy')}.pdf`);
-      toast.success("PDF exportado com sucesso!", { id: toastId });
+      const fileName = `Prontuario_${selectedRecord.patientName.replace(/\s+/g, '_')}_${format(new Date(selectedRecord.date), 'ddMMyyyy')}.pdf`;
+      pdf.save(fileName);
+      
+      toast.success("PDF baixado com sucesso!", { id: toastId });
     } catch (error) {
-      console.error("Erro ao exportar PDF:", error);
-      toast.error("Erro ao gerar PDF. Tente novamente.", { id: toastId });
+      console.error("Erro fatal ao exportar PDF:", error);
+      toast.error("Erro ao gerar o PDF. Tente novamente.", { id: toastId });
     } finally {
       setExporting(false);
     }
@@ -366,9 +404,13 @@ export default function Records() {
                   </p>
                 </div>
                 <Button 
+                  type="button"
                   variant="outline" 
                   size="sm" 
-                  onClick={exportPDF} 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    exportPDF();
+                  }} 
                   disabled={exporting}
                   className="gap-2"
                 >
@@ -377,7 +419,7 @@ export default function Records() {
                 </Button>
               </CardHeader>
               <CardContent className="p-6 overflow-auto flex-1">
-                <div className="max-w-3xl mx-auto space-y-8" ref={pdfRef}>
+                <div className="max-w-3xl mx-auto space-y-8" ref={pdfRef} id="printable-record">
                   {/* Sessão */}
                   <div className="bg-card p-8 rounded-xl border border-border shadow-sm">
                     <div className="flex justify-between items-start mb-6 pb-6 border-b border-border">

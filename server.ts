@@ -12,6 +12,9 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Trust proxy for express-rate-limit and other middleware
+  app.set('trust proxy', 1);
+
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     limit: 100, // Limit each IP to 100 requests per window
